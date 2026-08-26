@@ -5,25 +5,28 @@ from datetime import datetime
 class LocalDatabase:
     """
     Class responsible for managing local SQLite database to persist 
-    Projects (Clients) and Chat Histories offline.
+    Projects (Clients), their status (active/inactive), and Chat Histories offline.
     """
     def __init__(self, db_path: str = "data/frog_pdf.db"):
         self.db_path = db_path
         self._init_db()
 
     def _init_db(self):
-        """Creates required tables if they do not exist."""
+        """Creates required tables and ensures status column exists."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
+        # Tabela de Projetos / Clientes com campo de status (active / inactive)
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS projects (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT UNIQUE NOT NULL,
+                status TEXT DEFAULT 'active',
                 created_at TEXT
             )
         ''')
         
+        # Tabela de Histórico de Conversas vinculadas ao Projeto
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS chats (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,11 +41,11 @@ class LocalDatabase:
         conn.close()
 
     def add_project(self, name: str):
-        """Adds a new project or client locally."""
+        """Adds a new project or client locally as active by default."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         try:
-            cursor.execute("INSERT OR IGNORE INTO projects (name, created_at) VALUES (?, ?)", 
+            cursor.execute("INSERT OR IGNORE INTO projects (name, status, created_at) VALUES (?, 'active', ?)", 
                            (name, datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
             conn.commit()
         except Exception as e:
@@ -50,11 +53,22 @@ class LocalDatabase:
         finally:
             conn.close()
 
-    def get_projects(self) -> list:
-        """Retrieves all registered projects/clients."""
+    def toggle_project_status(self, project_id: int, new_status: str):
+        """Toggles a project's status between 'active' and 'inactive' (reference)."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute("SELECT id, name FROM projects ORDER BY id DESC")
+        cursor.execute("UPDATE projects SET status = ? WHERE id = ?", (new_status, project_id))
+        conn.commit()
+        conn.close()
+
+    def get_projects(self, status: str = None) -> list:
+        """Retrieves projects filtered by status ('active', 'inactive') or all if None."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        if status:
+            cursor.execute("SELECT id, name, status FROM projects WHERE status = ? ORDER BY id DESC", (status,))
+        else:
+            cursor.execute("SELECT id, name, status FROM projects ORDER BY id DESC")
         projects = cursor.fetchall()
         conn.close()
         return projects

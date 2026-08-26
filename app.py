@@ -14,9 +14,9 @@ from modules.merger import DocumentMerger
 from modules.database import LocalDatabase
 from modules.rag_engine import LocalRAG
 
-# Configuração da Página com layout largo
+# Configuração da Página com identidade visual FrogPDF
 st.set_page_config(
-    page_title="FrogPDF - AI Local Assistant",
+    page_title="FrogPDF - Assistente de IA Local",
     page_icon="frog.ico" if os.path.exists("frog.ico") else "🐸",
     layout="wide"
 )
@@ -40,12 +40,13 @@ col_left, col_center, col_right = st.columns([1.2, 2.8, 1.5])
 # COLUNA ESQUERDA: Upload, Merge e Análise
 # ------------------------------------------
 with col_left:
-    st.header("⚙️ Painel de Controle")
+    st.header("⚙️ FrogPDF")
     
-    projects = db.get_projects()
-    project_names = [p[1] for p in projects] if projects else ["Geral / Sem Projeto"]
+    # Busca apenas projetos ativos para o fluxo de trabalho diário
+    active_projects = db.get_projects(status='active')
+    project_names = [p[1] for p in active_projects] if active_projects else ["Geral / Sem Projeto"]
     
-    selected_project = st.selectbox("📂 Projeto / Cliente Ativo:", project_names)
+    selected_project = st.selectbox("📂 Projeto Ativo:", project_names)
     
     st.markdown("---")
     
@@ -64,8 +65,8 @@ with col_left:
     merge_choice = st.selectbox(
         "Modo de mesclagem:",
         [
-            "Sequential Concatenation", 
-            "Grouped by Document Type",
+            "Option 1: Sequential Concatenation", 
+            "Option 2: Grouped by Document Type",
             "Nenhum (Apenas Análise Direta)"
         ]
     )
@@ -74,8 +75,8 @@ with col_left:
     analysis_choice = st.selectbox(
         "Formato do sumário:",
         [
-            "Executive & Direct (Fast)", 
-            "Deep Analytical & Cross-Reference",
+            "Option 1: Executive & Direct (Fast)", 
+            "Option 2: Deep Analytical & Cross-Reference",
             "Nenhum (Apenas Merge / Sem Resumo)"
         ]
     )
@@ -92,7 +93,8 @@ with col_center:
     st.markdown("Assistente inteligente e privado para documentos confidenciais.")
     
     current_project_id = None
-    for p in projects:
+    all_projects_flat = db.get_projects() # Todos para mapear ID
+    for p in all_projects_flat:
         if p[1] == selected_project:
             current_project_id = p[0]
             break
@@ -133,7 +135,7 @@ with col_center:
                     else:
                         st.error(ai_response["result"])
 
-    # Recurso da Opção 3: Botão de Extração Estruturada de Dados-Chave
+    # Botão de Extração de Dados-Chave
     if st.session_state.get("processed_context"):
         st.markdown("---")
         if st.button("🔍 Extrair Dados Estruturados (CNPJ, Valores, Datas)", use_container_width=True):
@@ -181,16 +183,16 @@ with col_center:
         
         export_format = st.selectbox(
             "Escolha o formato de saída:",
-            ["Word (.docx)", "PDF (.pdf)", "Excel (.xlsx)"]
+            ["Relatório / Texto em Word (.docx)", "Relatório / Texto em PDF (.pdf)", "Tabelas em Excel (.xlsx)"]
         )
         
         content_to_export = st.session_state["processed_context"] if analysis_choice == "Nenhum (Apenas Merge / Sem Resumo)" else st.session_state["analysis_result"]
 
-        if export_format == "Word (.docx)":
+        if export_format == "Relatório / Texto em Word (.docx)":
             file_data = merger.export_to_docx(content_to_export)
             file_name = f"{selected_project}_Export.docx"
             mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        elif export_format == "PDF (.pdf)":
+        elif export_format == "Relatório / Texto em PDF (.pdf)":
             file_data = merger.export_to_pdf(content_to_export)
             file_name = f"{selected_project}_Export.pdf"
             mime_type = "application/pdf"
@@ -207,13 +209,14 @@ with col_center:
             use_container_width=True
         )
 
-    # Chat Inteligente com Recurso de Citação de Fontes (Opção 1)
+    # Chat Inteligente com Recurso de Citação de Fontes
     st.markdown("---")
-    st.header("💬 Chat")
+    st.header("💬 Chat com Citação de Fontes")
     
+    all_active_names = [p[1] for p in db.get_projects(status='active')]
     comparison_targets = st.multiselect(
         "🔍 Selecione os projetos para incluir na busca do Chat:",
-        options=project_names,
+        options=all_active_names if all_active_names else [selected_project],
         default=[selected_project]
     )
 
@@ -235,7 +238,6 @@ with col_center:
             
             with st.spinner("Buscando trechos e gerando resposta fundamentada..."):
                 relevant_context = rag.query_multiple_projects(comparison_targets, user_query)
-                # Utiliza a função com Grounding/Citações obrigatórias
                 answer = ai.interactive_chat_with_grounding(relevant_context, user_query)
                 
             with st.chat_message("assistant"):
@@ -244,7 +246,7 @@ with col_center:
                 db.save_message(current_project_id, "assistant", answer)
 
 # ------------------------------------------
-# COLUNA DIREITA: Gerenciamento de Projetos e Clientes
+# COLUNA DIREITA: Gestão de Projetos (Ativos / Inativos)
 # ------------------------------------------
 with col_right:
     st.header("🏢 Clientes & Projetos")
@@ -259,19 +261,50 @@ with col_right:
             st.warning("Digite um nome válido.")
             
     st.markdown("---")
-    st.subheader("📋 Projetos Salvos")
     
-    if projects:
-        for p in projects:
-            with st.expander(f"📁 {p[1]}"):
-                st.write(f"ID do Projeto: {p[0]}")
-                project_path = os.path.join("data", "uploads", p[1].replace(" ", "_"))
-                if os.path.exists(project_path):
-                    files = os.listdir(project_path)
-                    st.write(f"**Arquivos ({len(files)}):**")
-                    for f in files:
-                        st.text(f"- {f}")
-                else:
-                    st.text("Nenhum arquivo enviado.")
-    else:
-        st.info("Nenhum projeto cadastrado ainda.")
+    # Abas visuais intuitivas para Ativos e Inativos
+    tab_active, tab_inactive = st.tabs(["🟢 Ativos", "⚪ Inativos (Referências)"])
+    
+    with tab_active:
+        active_list = db.get_projects(status='active')
+        if active_list:
+            for p in active_list:
+                with st.expander(f"📁 {p[1]}"):
+                    st.write(f"ID: {p[0]}")
+                    project_path = os.path.join("data", "uploads", p[1].replace(" ", "_"))
+                    if os.path.exists(project_path):
+                        files = os.listdir(project_path)
+                        st.write(f"**Arquivos ({len(files)}):**")
+                        for f in files:
+                            st.text(f"- {f}")
+                    else:
+                        st.text("Nenhum arquivo.")
+                    
+                    # Botão intuitivo para desativar (enviar para referência)
+                    if st.button("📥 Arquivar / Inativar", key=f"inactivate_{p[0]}"):
+                        db.toggle_project_status(p[0], 'inactive')
+                        st.rerun()
+        else:
+            st.info("Nenhum projeto ativo.")
+            
+    with tab_inactive:
+        inactive_list = db.get_projects(status='inactive')
+        if inactive_list:
+            for p in inactive_list:
+                with st.expander(f"📁 {p[1]} (Inativo)"):
+                    st.write(f"ID: {p[0]}")
+                    project_path = os.path.join("data", "uploads", p[1].replace(" ", "_"))
+                    if os.path.exists(project_path):
+                        files = os.listdir(project_path)
+                        st.write(f"**Arquivos de Referência ({len(files)}):**")
+                        for f in files:
+                            st.text(f"- {f}")
+                    else:
+                        st.text("Nenhum arquivo.")
+                    
+                    # Botão intuitivo para reativar
+                    if st.button("📤 Reativar Projeto", key=f"activate_{p[0]}"):
+                        db.toggle_project_status(p[0], 'active')
+                        st.rerun()
+        else:
+            st.info("Nenhum projeto inativo.")
