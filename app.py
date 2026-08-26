@@ -1,6 +1,6 @@
-
 import sys
 import os
+import base64
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
@@ -132,7 +132,7 @@ with col_center:
                     else:
                         st.error(ai_response["result"])
 
-    # Aba de Visualizador de Documentos Nativos do Projeto
+    # Visualizador Nativo de Documentos do Projeto (Via HTML/Base64)
     st.markdown("---")
     st.header("👁️ Visualizador de Documentos")
     project_folder = os.path.join("data", "uploads", selected_project.replace(" ", "_"))
@@ -144,12 +144,12 @@ with col_center:
             file_path_to_view = os.path.join(project_folder, selected_file_to_view)
             
             if selected_file_to_view.lower().endswith('.pdf'):
-                # Renderiza PDF de forma nativa na tela
-                with open(file_path_to_view, "rb") as pdf_file:
-                    PDFbyte = pdf_file.read()
-                st.pdf(PDFbyte, height=600)
+                # Renderiza PDF de forma nativa e limpa no navegador via base64 iframe
+                with open(file_path_to_view, "rb") as f:
+                    base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+                pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600px" type="application/pdf"></iframe>'
+                st.markdown(pdf_display, unsafe_allow_html=True)
             elif selected_file_to_view.lower().endswith(('.docx', '.xlsx', '.csv', '.txt')):
-                # Mostra o texto extraído do documento para leitura rápida
                 with st.expander(f"Ver conteúdo extraído de: {selected_file_to_view}"):
                     file_text_preview = loader.load_document(file_path_to_view)
                     st.text_area("Conteúdo:", file_text_preview, height=300)
