@@ -43,14 +43,16 @@ frog_pdf/
 └── data/                      
     ├── uploads/               # Pastas isoladas por projeto (ignorado pelo git)
     └── frog_pdf.db            # Banco de dados local de histórico (ignorado pelo git)
+``` 
 
-#    Guia Rápido de Instalação (Desenvolvedores)
+##    Guia Rápido de Instalação (Desenvolvedores)
 Pré-requisitos:
 Python 3.10+ instalado.
+`pip install -r requirements.txt`
 
 Ollama instalado com o modelo padrão baixado:
-ollama pull llama3.2
+`ollama pull llama3.2`
 
 Tesseract OCR instalado no sistema operacional.
+`sudo apt install tesseract-ocr`
 
-pip install -r requirements.txt
