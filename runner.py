@@ -1,19 +1,19 @@
-
 import os
 import sys
-import streamlit.web.bootstrap
+import subprocess
 
 if __name__ == "__main__":
-    # Garante que o caminho base aponte para a pasta correta do executável
+    # Descobre o diretório real onde o executável está rodando
     if getattr(sys, 'frozen', False):
-        os.chdir(sys._MEIPASS)
-    
-    # Configura os parâmetros para rodar o app.py do Streamlit embutido
-    sys.argv = [
-        "streamlit",
-        "run",
-        "app.py",
-        "--global.developmentMode=false",
-    ]
-    
-    streamlit.web.bootstrap.run()
+        current_dir = sys._MEIPASS
+    else:
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    app_path = os.path.join(current_dir, "app.py")
+
+    # Executa o Streamlit chamando o processo de forma estável
+    try:
+        subprocess.run([sys.executable, "-m", "streamlit", "run", app_path, "--global.developmentMode=false"])
+    except Exception as e:
+        print(f"Erro crítico ao iniciar o FrogPDF: {e}")
+        input("Pressione Enter para fechar...")
