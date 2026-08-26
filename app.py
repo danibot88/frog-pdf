@@ -1,3 +1,4 @@
+
 import sys
 import os
 import base64
@@ -84,7 +85,7 @@ with col_left:
     process_btn = st.button("🚀 Processar e Indexar", use_container_width=True)
 
 # ------------------------------------------
-# COLUNA CENTRAL: Área Principal (Chat, Resultados e Visualizador)
+# COLUNA CENTRAL: Área Principal
 # ------------------------------------------
 with col_center:
     st.title("🐸 FrogPDF")
@@ -132,7 +133,19 @@ with col_center:
                     else:
                         st.error(ai_response["result"])
 
-    # Visualizador Nativo de Documentos do Projeto (Via HTML/Base64)
+    # Recurso da Opção 3: Botão de Extração Estruturada de Dados-Chave
+    if st.session_state.get("processed_context"):
+        st.markdown("---")
+        if st.button("🔍 Extrair Dados Estruturados (CNPJ, Valores, Datas)", use_container_width=True):
+            with st.spinner("Extraindo entidades e dados-chave dos documentos..."):
+                extracted_table = ai.extract_structured_data(st.session_state["processed_context"])
+                st.session_state["extracted_data_result"] = extracted_table
+
+    if "extracted_data_result" in st.session_state:
+        st.markdown("### 📑 Dados-Chave Extraídos")
+        st.markdown(st.session_state["extracted_data_result"])
+
+    # Visualizador Nativo de Documentos do Projeto
     st.markdown("---")
     st.header("👁️ Visualizador de Documentos")
     project_folder = os.path.join("data", "uploads", selected_project.replace(" ", "_"))
@@ -144,7 +157,6 @@ with col_center:
             file_path_to_view = os.path.join(project_folder, selected_file_to_view)
             
             if selected_file_to_view.lower().endswith('.pdf'):
-                # Renderiza PDF de forma nativa e limpa no navegador via base64 iframe
                 with open(file_path_to_view, "rb") as f:
                     base64_pdf = base64.b64encode(f.read()).decode('utf-8')
                 pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600px" type="application/pdf"></iframe>'
@@ -195,12 +207,12 @@ with col_center:
             use_container_width=True
         )
 
-    # Chat Inteligente com Suporte a Comparação Multi-Projeto
+    # Chat Inteligente com Recurso de Citação de Fontes (Opção 1)
     st.markdown("---")
-    st.header("💬 Chat Inteligente & Comparativo")
+    st.header("💬 Chat com Citação de Fontes")
     
     comparison_targets = st.multiselect(
-        "🔍 Selecione os projetos para incluir na busca do Chat (Cruzamento de Dados):",
+        "🔍 Selecione os projetos para incluir na busca do Chat:",
         options=project_names,
         default=[selected_project]
     )
@@ -211,7 +223,7 @@ with col_center:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
                 
-    user_query = st.chat_input("Faça uma pergunta ou compare os projetos selecionados...")
+    user_query = st.chat_input("Faça uma pergunta (o assistente citará as fontes)...")
     if user_query:
         if not comparison_targets:
             st.warning("Selecione pelo menos um projeto para realizar a busca.")
@@ -221,9 +233,10 @@ with col_center:
             if current_project_id:
                 db.save_message(current_project_id, "user", user_query)
             
-            with st.spinner(f"Cruzando dados entre: {', '.join(comparison_targets)}..."):
+            with st.spinner("Buscando trechos e gerando resposta fundamentada..."):
                 relevant_context = rag.query_multiple_projects(comparison_targets, user_query)
-                answer = ai.interactive_chat(relevant_context, user_query)
+                # Utiliza a função com Grounding/Citações obrigatórias
+                answer = ai.interactive_chat_with_grounding(relevant_context, user_query)
                 
             with st.chat_message("assistant"):
                 st.markdown(answer)
