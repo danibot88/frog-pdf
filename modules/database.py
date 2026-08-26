@@ -26,6 +26,12 @@ class LocalDatabase:
             )
         ''')
         
+        # Garante retrocompatibilidade caso a tabela já exista sem a coluna status
+        try:
+            cursor.execute("ALTER TABLE projects ADD COLUMN status TEXT DEFAULT 'active'")
+        except sqlite3.OperationalError:
+            pass # A coluna já existe
+        
         # Tabela de Histórico de Conversas vinculadas ao Projeto
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS chats (

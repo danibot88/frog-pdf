@@ -21,6 +21,41 @@ st.set_page_config(
     layout="wide"
 )
 
+# Injeção de CSS personalizado para garantir fundo verde claro e caixas brancas
+st.markdown(
+    """
+    <style>
+    /* Cor de fundo geral da aplicação (Verde Claro) */
+    .stApp {
+        background-color: #EAF4EC;
+    }
+    
+    /* Cor de fundo da barra lateral (Sidebar) */
+    [data-testid="stSidebar"] {
+        background-color: #DDEFE0;
+    }
+
+    /* Força as caixas de texto, expansores e blocos internos a ficarem em Branco */
+    div.stTextInput > div > div > input,
+    div.stSelectbox > div > div > div,
+    div.stTextArea > div > div > textarea,
+    [data-testid="stExpander"],
+    [data-testid="stChatInput"] {
+        background-color: #FFFFFF !important;
+        color: #1F2937 !important;
+    }
+
+    /* Remove qualquer tom azulado indesejado em molduras ou bordas de componentes */
+    iframe {
+        border-radius: 8px;
+        border: 1px solid #C8E6C9 !important;
+        background-color: #FFFFFF;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # Trava de idioma para o navegador
 st.markdown('<html lang="pt-BR">', unsafe_allow_html=True)
 
@@ -40,20 +75,20 @@ col_left, col_center, col_right = st.columns([1.2, 2.8, 1.5])
 # COLUNA ESQUERDA: Upload, Merge e Análise
 # ------------------------------------------
 with col_left:
-    st.header("⚙️ FrogPDF")
+    st.header("⚙️ Inicio")
     
     # Busca apenas projetos ativos para o fluxo de trabalho diário
     active_projects = db.get_projects(status='active')
     project_names = [p[1] for p in active_projects] if active_projects else ["Geral / Sem Projeto"]
     
-    selected_project = st.selectbox("📂 Projeto Ativo:", project_names)
+    selected_project = st.selectbox("📂 Projeto:", project_names)
     
     st.markdown("---")
     
     # 1. UPLOAD DE ARQUIVOS
-    st.subheader("📤 Enviar Documentos")
+    st.subheader("📤 Enviar Docs")
     uploaded_files = st.file_uploader(
-        "Selecione arquivos para este projeto",
+        "Selecione ou arraste arquivos aqui ",
         type=["pdf", "docx", "doc", "xlsx", "csv"],
         accept_multiple_files=True
     )
@@ -71,7 +106,7 @@ with col_left:
         ]
     )
     
-    st.subheader("Tipo de Análise IA")
+    st.subheader("Análise de IA")
     analysis_choice = st.selectbox(
         "Formato do sumário:",
         [
@@ -147,7 +182,7 @@ with col_center:
         st.markdown("### 📑 Dados-Chave Extraídos")
         st.markdown(st.session_state["extracted_data_result"])
 
-    # Visualizador Nativo de Documentos do Projeto
+    # Visualizador Nativo de Documentos do Projeto (Via HTML/Base64)
     st.markdown("---")
     st.header("👁️ Visualizador de Documentos")
     project_folder = os.path.join("data", "uploads", selected_project.replace(" ", "_"))
@@ -159,10 +194,18 @@ with col_center:
             file_path_to_view = os.path.join(project_folder, selected_file_to_view)
             
             if selected_file_to_view.lower().endswith('.pdf'):
+                # Renderiza PDF de forma limpa dentro de um container emoldurado em branco
                 with open(file_path_to_view, "rb") as f:
                     base64_pdf = base64.b64encode(f.read()).decode('utf-8')
-                pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600px" type="application/pdf"></iframe>'
-                st.markdown(pdf_display, unsafe_allow_html=True)
+                
+                st.markdown(
+                    f'''
+                    <div style="background-color: #FFFFFF; padding: 10px; border-radius: 10px; border: 1px solid #C8E6C9;">
+                        <iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600px" type="application/pdf" style="border: none;"></iframe>
+                    </div>
+                    ''',
+                    unsafe_allow_html=True
+                )
             elif selected_file_to_view.lower().endswith(('.docx', '.xlsx', '.csv', '.txt')):
                 with st.expander(f"Ver conteúdo extraído de: {selected_file_to_view}"):
                     file_text_preview = loader.load_document(file_path_to_view)
@@ -211,7 +254,7 @@ with col_center:
 
     # Chat Inteligente com Recurso de Citação de Fontes
     st.markdown("---")
-    st.header("💬 Chat com Citação de Fontes")
+    st.header("💬 Chat")
     
     all_active_names = [p[1] for p in db.get_projects(status='active')]
     comparison_targets = st.multiselect(
@@ -263,7 +306,7 @@ with col_right:
     st.markdown("---")
     
     # Abas visuais intuitivas para Ativos e Inativos
-    tab_active, tab_inactive = st.tabs(["🟢 Ativos", "⚪ Inativos (Referências)"])
+    tab_active, tab_inactive = st.tabs(["🟢 Ativos", "⚪ Inativos"])
     
     with tab_active:
         active_list = db.get_projects(status='active')
