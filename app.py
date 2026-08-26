@@ -58,7 +58,7 @@ with col_left:
     
     st.markdown("---")
     
-    # 2. OPÇÕES DE MERGE E ANÁLISE (Com opção de deixar em branco / pular)
+    # 2. OPÇÕES DE MERGE E ANÁLISE
     st.subheader("Estratégia de Merge")
     merge_choice = st.selectbox(
         "Modo de mesclagem:",
@@ -113,31 +113,26 @@ with col_center:
                     extracted_text = loader.load_document(file_path)
                     documents_data[file.name] = extracted_text
                 
-                # Executa o Merge (ou pula se selecionado "Nenhum")
                 combined_text = merger.merge_documents(documents_data, merge_choice)
                 st.session_state["processed_context"] = combined_text
                 
-                # Indexa no motor RAG local
                 rag.add_documents_to_collection(selected_project, documents_data)
                 
-                # Verifica se o usuário escolheu rodar a análise de IA ou pular
                 if analysis_choice == "Nenhum (Apenas Merge / Sem Resumo)":
                     st.session_state["analysis_result"] = (
                         "### 📋 Merge Concluído sem Análise de IA\n\n"
-                        "Os documentos foram mesclados com sucesso conforme a estratégia selecionada. "
-                        "Utilize a central de exportação abaixo para baixar o arquivo unificado."
+                        "Os documentos foram mesclados com sucesso conforme a estratégia selecionada."
                     )
-                    st.success("✅ Merge executado com sucesso (Análise de IA ignorada por escolha do usuário).")
+                    st.success("✅ Merge executado com sucesso.")
                 else:
-                    # Executa a IA local
                     ai_response = ai.generate_summary_and_tables(combined_text, analysis_choice)
                     if ai_response["status"] == "success":
                         st.session_state["analysis_result"] = ai_response["result"]
-                        st.success("✅ Documentos processados, indexados e analisados com sucesso!")
+                        st.success("✅ Documentos processados e analisados com sucesso!")
                     else:
                         st.error(ai_response["result"])
 
-    # Exibir Relatórios e Mini Menu Central de Exportação
+    # Exibir Relatórios e Central de Exportação
     if "analysis_result" in st.session_state and st.session_state["analysis_result"]:
         st.markdown("---")
         st.header("📊 Resultado do Processamento")
@@ -151,7 +146,6 @@ with col_center:
             ["Relatório / Texto em Word (.docx)", "Relatório / Texto em PDF (.pdf)", "Tabelas em Excel (.xlsx)"]
         )
         
-        # Se o usuário escolheu apenas o merge, exporta o texto combinado bruto; se escolheu com IA, exporta o resultado da IA
         content_to_export = st.session_state["processed_context"] if analysis_choice == "Nenhum (Apenas Merge / Sem Resumo)" else st.session_state["analysis_result"]
 
         if export_format == "Relatório / Texto em Word (.docx)":
@@ -175,29 +169,42 @@ with col_center:
             use_container_width=True
         )
 
-    # Chat Interativo com RAG Local
+    # Chat Inteligente com Suporte a Comparação Multi-Projeto
     st.markdown("---")
-    st.header("💬 Chat Inteligente")
+    st.header("💬 Chat Inteligente & Comparativo")
     
+    # Seletor para escolher quais projetos comparar no chat
+    comparison_targets = st.multiselect(
+        "🔍 Selecione os projetos para incluir na busca do Chat (Cruzamento de Dados):",
+        options=project_names,
+        default=[selected_project]
+    )
+
     if current_project_id:
         chat_history = db.get_chat_history(current_project_id)
         for msg in chat_history:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
                 
-    user_query = st.chat_input("Faça uma pergunta sobre os documentos deste projeto...")
-    if user_query and current_project_id:
-        with st.chat_message("user"):
-            st.markdown(user_query)
-        db.save_message(current_project_id, "user", user_query)
-        
-        with st.spinner("Buscando trechos relevantes e consultando Llama 3.2..."):
-            relevant_context = rag.query_documents(selected_project, user_query)
-            answer = ai.interactive_chat(relevant_context, user_query)
+    user_query = st.chat_input("Faça uma pergunta ou compare os projetos selecionados...")
+    if user_query:
+        if not comparison_targets:
+            st.warning("Selecione pelo menos um projeto para realizar a busca.")
+        else:
+            with st.chat_message("user"):
+                st.markdown(user_query)
+            if current_project_id:
+                db.save_message(current_project_id, "user", user_query)
             
-        with st.chat_message("assistant"):
-            st.markdown(answer)
-        db.save_message(current_project_id, "assistant", answer)
+            with st.spinner(f"Cruzando dados entre: {', '.join(comparison_targets)}..."):
+                # Busca semântica cruzada em múltiplos projetos
+                relevant_context = rag.query_multiple_projects(comparison_targets, user_query)
+                answer = ai.interactive_chat(relevant_context, user_query)
+                
+            with st.chat_message("assistant"):
+                st.markdown(answer)
+            if current_project_id:
+                db.save_message(current_project_id, "assistant", answer)
 
 # ------------------------------------------
 # COLUNA DIREITA: Gerenciamento de Projetos e Clientes
