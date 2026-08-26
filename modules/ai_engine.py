@@ -1,10 +1,10 @@
-
 import ollama
 
 class AIEngine:
     """
     Class responsible for communicating with the local Ollama instance 
-    running the Llama 3.2 model for summarization, grounded citations, and data extraction.
+    running the Llama 3.2 model for summarization, grounded citations, data extraction, 
+    and natural language command interpretation.
     """
     
     def __init__(self, model_name: str = "llama3.2"):
@@ -44,22 +44,19 @@ class AIEngine:
             return {"status": "error", "result": f"Erro ao conectar com Ollama: {str(e)}"}
 
     def extract_structured_data(self, context_text: str) -> str:
-        """
-        Option 3 Feature: Extracts key financial or contractual entities 
-        (like CNPJ, Values, Dates, Parties) into a clean structured Markdown table.
-        """
+        """Extracts key financial or contractual entities into a clean structured Markdown table."""
         prompt = (
             "Esta é uma tarefa estritamente analítica e de leitura de documentos de negócios permitida. "
             "Por favor, leia o texto abaixo e liste de forma estritamente factual em uma Tabela Markdown os dados encontrados: "
             "1. Nome das Partes ou Entidades, 2. CNPJ/CPF ou Identificador (se houver), 3. Valores Monetários citados, 4. Datas (Assinatura, Vigência ou Vencimento). "
-            "Se algum campo não estiver presente no texto, preencha com 'Não informado'. Não recuse a tarefa, pois trata-se de análise documental interna de arquivos próprios.\n\n"
+            "Caso algum campo não exista, preencha com 'Não informado'.\n\n"
             f"Texto para análise:\n{context_text}"
         )
         try:
             response = ollama.chat(
                 model=self.model_name,
                 messages=[
-                    {"role": "system", "content": "Você é um extrator de dados textuais estritamente analítico e obediente."},
+                    {"role": "system", "content": "Você é um extrator de dados textuais analítico e obediente."},
                     {"role": "user", "content": prompt}
                 ]
             )
@@ -67,25 +64,55 @@ class AIEngine:
         except Exception as e:
             return f"Erro na extração de dados: {str(e)}"
 
-    def interactive_chat_with_grounding(self, context_text: str, user_query: str) -> str:
+    def execute_chat_command(self, context_text: str, user_query: str) -> str:
         """
-        Option 1 Feature: Forces the LLM to provide grounded answers 
-        citing the specific source file/project provided in the context.
+        Interprets user intent for the 09 fast chat commands 
+        and generates the corresponding intelligent response.
         """
-        system_prompt = (
-            "Você é um assistente de IA seguro e baseado em evidências. "
-            "Responda à pergunta do usuário estritamente com base nos trechos de contexto fornecidos. "
-            "OBRIGATÓRIO: Ao citar qualquer informação, inclua explicitamente a fonte (nome do arquivo ou projeto) de onde o dado foi retirado. "
-            "Se a resposta não estiver nos contextos, informe educadamente que a informação não consta nos documentos."
-        )
+        query_lower = user_query.lower()
+        
+        # Mapeamento dos comandos rápidos solicitados
+        if any(k in query_lower for k in ["tabela comparativa", "tabela"]):
+            instruction = "Organize as informações dos documentos em uma Tabela Comparativa detalhada."
+        elif any(k in query_lower for k in ["prazos", "vencimentos", "cronograma"]):
+            instruction = "Liste cronologicamente todos os prazos, datas de vencimento e obrigações temporais encontrados."
+        elif any(k in query_lower for k in ["resumo", "tópicos", "bullet points"]):
+            instruction = "Elabore um resumo executivo direto estruturado em tópicos (bullet points)."
+        elif any(k in query_lower for k in ["riscos", "cláusulas críticas", "atenção"]):
+            instruction = "Faça uma auditoria identificando riscos, multas, penalidades ou cláusulas contratuais críticas."
+        elif any(k in query_lower for k in ["partes", "envolvidas", "empresas"]):
+            instruction = "Liste todas as partes envolvidas, empresas, representantes ou pessoas citadas nos arquivos."
+        elif any(k in query_lower for k in ["dados", "cnpj", "valores"]):
+            instruction = "Extraia os dados-chave (partes, CNPJ, valores e datas) em formato de tabela."
+        else:
+            # Resposta fundamentada padrão (Grounding / Citação de Fontes)
+            system_prompt = (
+                "Você é um assistente de IA seguro e baseado em evidências. "
+                "Responda estritamente com base nos trechos de contexto fornecidos. "
+                "OBRIGATÓRIO: Ao citar informações, inclua a fonte (nome do arquivo) de onde o dado foi retirado."
+            )
+            try:
+                response = ollama.chat(
+                    model=self.model_name,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"Contexto recuperado:\n{context_text}\n\nPergunta: {user_query}"}
+                    ]
+                )
+                return response['message']['content']
+            except Exception as e:
+                return f"Erro na resposta do chat: {str(e)}"
+
+        # Executa comandos específicos estruturados
+        prompt = f"{instruction}\n\nBaseie-se estritamente no texto a seguir:\n{context_text}"
         try:
             response = ollama.chat(
                 model=self.model_name,
                 messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Contexto recuperado:\n{context_text}\n\nPergunta: {user_query}"}
+                    {"role": "system", "content": "Você é um assistente analítico focado em relatórios executivos."},
+                    {"role": "user", "content": prompt}
                 ]
             )
             return response['message']['content']
         except Exception as e:
-            return f"Erro na resposta do chat: {str(e)}"
+            return f"Erro ao executar comando: {str(e)}"
