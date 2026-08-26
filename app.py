@@ -64,8 +64,8 @@ with col_left:
     merge_choice = st.selectbox(
         "Modo de mesclagem:",
         [
-            "Option 1: Sequential Concatenation", 
-            "Option 2: Grouped by Document Type",
+            "Sequential Concatenation", 
+            "Grouped by Document Type",
             "Nenhum (Apenas Análise Direta)"
         ]
     )
@@ -74,8 +74,8 @@ with col_left:
     analysis_choice = st.selectbox(
         "Formato do sumário:",
         [
-            "Option 1: Executive & Direct (Fast)", 
-            "Option 2: Deep Analytical & Cross-Reference",
+            "Executive & Direct (Fast)", 
+            "Deep Analytical & Cross-Reference",
             "Nenhum (Apenas Merge / Sem Resumo)"
         ]
     )
@@ -181,16 +181,16 @@ with col_center:
         
         export_format = st.selectbox(
             "Escolha o formato de saída:",
-            ["Relatório / Texto em Word (.docx)", "Relatório / Texto em PDF (.pdf)", "Tabelas em Excel (.xlsx)"]
+            ["Word (.docx)", "PDF (.pdf)", "Excel (.xlsx)"]
         )
         
         content_to_export = st.session_state["processed_context"] if analysis_choice == "Nenhum (Apenas Merge / Sem Resumo)" else st.session_state["analysis_result"]
 
-        if export_format == "Relatório / Texto em Word (.docx)":
+        if export_format == "Word (.docx)":
             file_data = merger.export_to_docx(content_to_export)
             file_name = f"{selected_project}_Export.docx"
             mime_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-        elif export_format == "Relatório / Texto em PDF (.pdf)":
+        elif export_format == "PDF (.pdf)":
             file_data = merger.export_to_pdf(content_to_export)
             file_name = f"{selected_project}_Export.pdf"
             mime_type = "application/pdf"
@@ -209,7 +209,7 @@ with col_center:
 
     # Chat Inteligente com Recurso de Citação de Fontes (Opção 1)
     st.markdown("---")
-    st.header("💬 Chat com Citação de Fontes")
+    st.header("💬 Chat")
     
     comparison_targets = st.multiselect(
         "🔍 Selecione os projetos para incluir na busca do Chat:",
