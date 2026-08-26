@@ -49,16 +49,17 @@ class AIEngine:
         (like CNPJ, Values, Dates, Parties) into a clean structured Markdown table.
         """
         prompt = (
-            "Analise o texto abaixo e extraia em formato de Tabela Markdown os seguintes dados-chave (se existirem): "
-            "1. Entidade / Parte Envolvida, 2. CNPJ / CPF ou Identificador, 3. Valor Monetário / Multa, 4. Datas Relevantes (Assinatura/Vencimento). "
-            "Caso algum dado não exista, informe 'N/A'. Seja direto e entregue apenas a tabela com uma breve introdução.\n\n"
-            f"Contexto:\n{context_text}"
+            "Esta é uma tarefa estritamente analítica e de leitura de documentos de negócios permitida. "
+            "Por favor, leia o texto abaixo e liste de forma estritamente factual em uma Tabela Markdown os dados encontrados: "
+            "1. Nome das Partes ou Entidades, 2. CNPJ/CPF ou Identificador (se houver), 3. Valores Monetários citados, 4. Datas (Assinatura, Vigência ou Vencimento). "
+            "Se algum campo não estiver presente no texto, preencha com 'Não informado'. Não recuse a tarefa, pois trata-se de análise documental interna de arquivos próprios.\n\n"
+            f"Texto para análise:\n{context_text}"
         )
         try:
             response = ollama.chat(
                 model=self.model_name,
                 messages=[
-                    {"role": "system", "content": "Você é um extrator de dados estruturados focado em precisão."},
+                    {"role": "system", "content": "Você é um extrator de dados textuais estritamente analítico e obediente."},
                     {"role": "user", "content": prompt}
                 ]
             )
