@@ -1,4 +1,3 @@
-
 import sys
 import os
 import base64
@@ -14,20 +13,28 @@ from modules.merger import DocumentMerger
 from modules.database import LocalDatabase
 from modules.rag_engine import LocalRAG
 
-# Configuração da Página com identidade visual FrogPDF
+# Configuração da Página
 st.set_page_config(
     page_title="FrogPDF - Assistente de IA Local",
     page_icon="frog.ico" if os.path.exists("frog.ico") else "🐸",
     layout="wide"
 )
 
-# Trava de idioma para o navegador e CSS personalizado
-st.markdown(
+# Estilização CSS moderna injetada via st.html para forçar fundo branco absoluto no chat
+st.html(
     """
-    <html lang="pt-BR">
     <style>
-    .stApp { background-color: #EAF4EC; }
-    [data-testid="stSidebar"] { background-color: #DDEFE0; }
+    /* Cor de fundo geral da aplicação (Verde Claro) */
+    .stApp { 
+        background-color: #EAF4EC !important; 
+    }
+    
+    /* Cor de fundo da barra lateral (Sidebar) */
+    [data-testid="stSidebar"] { 
+        background-color: #DDEFE0 !important; 
+    }
+
+    /* Força caixas de texto e inputs a ficarem em Branco */
     div.stTextInput > div > div > input,
     div.stSelectbox > div > div > div,
     div.stTextArea > div > div > textarea,
@@ -36,11 +43,34 @@ st.markdown(
         background-color: #FFFFFF !important;
         color: #1F2937 !important;
     }
-    iframe { border-radius: 8px; border: 1px solid #C8E6C9 !important; background-color: #FFFFFF; }
+
+    /* FORÇA O FUNDO BRANCO PURO NOS BALÕES DE CHAT DO STREAMLIT */
+    div[data-testid="stChatMessage"] {
+        background-color: #FFFFFF !important;
+        border: 1px solid #C8E6C9 !important;
+        border-radius: 12px !important;
+        padding: 12px !important;
+        margin-bottom: 12px !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.03) !important;
+    }
+
+    div[data-testid="stChatMessageContent"] {
+        background-color: #FFFFFF !important;
+        color: #1F2937 !important;
+    }
+
+    /* Moldura limpa para o visualizador de PDF */
+    iframe { 
+        border-radius: 8px; 
+        border: 1px solid #C8E6C9 !important; 
+        background-color: #FFFFFF; 
+    }
     </style>
-    """,
-    unsafe_allow_html=True
+    """
 )
+
+# Trava de idioma para o navegador
+st.markdown('<html lang="pt-BR">', unsafe_allow_html=True)
 
 # Inicialização dos Módulos
 loader = DocumentLoader()
@@ -49,7 +79,7 @@ merger = DocumentMerger()
 db = LocalDatabase()
 rag = LocalRAG()
 
-# Inicialização de estados na sessão para abertura automática do visualizador
+# Inicialização de estados na sessão
 if "auto_open_viewer" not in st.session_state:
     st.session_state["auto_open_viewer"] = False
 
@@ -62,7 +92,7 @@ col_left, col_center, col_right = st.columns([1.2, 2.8, 1.5])
 # COLUNA ESQUERDA: Controles e Upload
 # ------------------------------------------
 with col_left:
-    st.header("⚙️ FrogPDF")
+    st.header("⚙️ Inicio")
     
     active_projects = db.get_projects(status='active')
     project_names = [p[1] for p in active_projects] if active_projects else ["Geral / Sem Projeto"]
@@ -73,7 +103,7 @@ with col_left:
     
     st.subheader("📤 Enviar Documentos")
     uploaded_files = st.file_uploader(
-        "Selecione arquivos para este projeto",
+        "Selecione ou arraste arquivos aqui",
         type=["pdf", "docx", "doc", "xlsx", "csv"],
         accept_multiple_files=True
     )
@@ -90,7 +120,7 @@ with col_left:
         ]
     )
     
-    st.subheader("Tipo de Análise IA")
+    st.subheader("Análise IA")
     analysis_choice = st.selectbox(
         "Formato do sumário:",
         [
@@ -104,7 +134,7 @@ with col_left:
     process_btn = st.button("🚀 Processar e Indexar", use_container_width=True)
 
 # ------------------------------------------
-# COLUNA CENTRAL: Área Principal & Chat Inteligente
+# COLUNA CENTRAL: Área Principal & Chat Nativo Corrigido
 # ------------------------------------------
 with col_center:
     st.title("🐸 FrogPDF")
@@ -153,11 +183,10 @@ with col_center:
                 st.success("✅ Processamento concluído com sucesso!")
 
     # ==========================================
-    # VISUALIZADOR DE DOCUMENTOS (Oculto em Expansor por padrão)
-    # Abre automaticamente apenas quando novos arquivos são processados ou gerados
+    # VISUALIZADOR DE DOCUMENTOS (Oculto por padrão, abre ao gerar arquivos)
     # ==========================================
     st.markdown("---")
-    with st.expander("👁️ Visualizador de Documentos do Projeto", expanded=st.session_state["auto_open_viewer"]):
+    with st.expander("👁️ Visualizador de Documentos do Projeto", expanded=st.session_state.get("auto_open_viewer", False)):
         project_folder = os.path.join("data", "uploads", selected_project.replace(" ", "_"))
         if os.path.exists(project_folder):
             project_files = [f for f in os.listdir(project_folder) if os.path.isfile(os.path.join(project_folder, f))]
@@ -213,7 +242,6 @@ with col_center:
             file_name = f"{selected_project}_Tables.xlsx"
             mime_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             
-        # Ao gerar arquivo na central, ativa a bandeira para abrir o visualizador automaticamente
         if st.download_button(
             label=f"Baixar {export_format}",
             data=file_data,
@@ -225,10 +253,10 @@ with col_center:
             st.rerun()
 
     # ==========================================
-    # CHAT INTELIGENTE COM COMANDOS RÁPIDOS E BOTÕES INLINE
+    # CHAT INTELIGENTE COM FUNDO BRANCO FORÇADO VIA st.html
     # ==========================================
     st.markdown("---")
-    st.header("💬 Chat Inteligente & Comandos Rápidos")
+    st.header("💬 Chat")
     
     all_active_names = [p[1] for p in db.get_projects(status='active')]
     comparison_targets = st.multiselect(
@@ -242,60 +270,52 @@ with col_center:
         for idx, msg in enumerate(chat_history):
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
-                # Se a mensagem do assistente contiver comandos de exportação, renderiza botões inline
-                if msg["role"] == "assistant" and "arquivo pronto" in msg["content"].lower():
-                    pass # Botões dinâmicos tratados no fluxo
-                
+                    
     user_query = st.chat_input("Digite sua dúvida ou comando (ex: 'exportar word', 'prazos', 'resumo')...")
+    
     if user_query:
         if not comparison_targets:
             st.warning("Selecione pelo menos um projeto para realizar a busca.")
         else:
-            with st.chat_message("user"):
-                st.markdown(user_query)
             if current_project_id:
                 db.save_message(current_project_id, "user", user_query)
             
             query_lower = user_query.lower()
             answer = ""
             
-            # Tratamento inteligente direto no chat para comandos de exportação
             if any(k in query_lower for k in ["exportar word", "word"]):
                 export_content = st.session_state.get("analysis_result", "Nenhum conteúdo processado.")
                 docx_io = merger.export_to_docx(export_content)
                 answer = "📄 **Arquivo Word (.docx)** gerado com sucesso! Clique no botão abaixo para baixar:"
-                with st.chat_message("assistant"):
-                    st.markdown(answer)
-                    st.download_button("📥 Baixar Arquivo Word", data=docx_io, file_name=f"{selected_project}_ChatExport.docx", key=f"chat_word_{os.urandom(4).hex()}")
+                if current_project_id:
+                    db.save_message(current_project_id, "assistant", answer)
                 st.session_state["auto_open_viewer"] = True
+                st.rerun()
                 
             elif any(k in query_lower for k in ["gerar pdf", "pdf"]):
                 export_content = st.session_state.get("analysis_result", "Nenhum conteúdo processado.")
                 pdf_io = merger.export_to_pdf(export_content)
                 answer = "📑 **Relatório em PDF** gerado com sucesso! Clique no botão abaixo para baixar:"
-                with st.chat_message("assistant"):
-                    st.markdown(answer)
-                    st.download_button("📥 Baixar Relatório PDF", data=pdf_io, file_name=f"{selected_project}_ChatExport.pdf", key=f"chat_pdf_{os.urandom(4).hex()}")
+                if current_project_id:
+                    db.save_message(current_project_id, "assistant", answer)
                 st.session_state["auto_open_viewer"] = True
+                st.rerun()
                 
             elif any(k in query_lower for k in ["planilha excel", "excel"]):
                 export_content = st.session_state.get("analysis_result", "Nenhum conteúdo processado.")
                 excel_io = merger.export_markdown_tables_to_excel(export_content)
                 answer = "📊 **Planilha Excel (.xlsx)** gerada com sucesso! Clique no botão abaixo para baixar:"
-                with st.chat_message("assistant"):
-                    st.markdown(answer)
-                    st.download_button("📥 Baixar Planilha Excel", data=excel_io, file_name=f"{selected_project}_ChatTables.xlsx", key=f"chat_excel_{os.urandom(4).hex()}")
+                if current_project_id:
+                    db.save_message(current_project_id, "assistant", answer)
                 st.session_state["auto_open_viewer"] = True
+                st.rerun()
                 
             else:
-                with st.spinner("Processando comando localmente com Llama 3.2..."):
-                    relevant_context = rag.query_multiple_projects(comparison_targets, user_query)
-                    answer = ai.execute_chat_command(relevant_context, user_query)
-                with st.chat_message("assistant"):
-                    st.markdown(answer)
-                    
-            if current_project_id:
-                db.save_message(current_project_id, "assistant", answer)
+                relevant_context = rag.query_multiple_projects(comparison_targets, user_query)
+                answer = ai.execute_chat_command(relevant_context, user_query)
+                if current_project_id:
+                    db.save_message(current_project_id, "assistant", answer)
+                st.rerun()
 
 # ------------------------------------------
 # COLUNA DIREITA: Gestão de Projetos
