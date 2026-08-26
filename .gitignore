@@ -1,0 +1,24 @@
+
+# Ignora arquivos de ambiente do Python e cache
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+
+# Ignora o banco de dados local com conversas confidenciais
+data/frog_pdf.db
+
+# Ignora os arquivos enviados por clientes (Segurança de dados sensíveis!)
+data/uploads/
+data/vector_db/
+
+# Ignora arquivos gerados pelo PyInstaller ao criar o .exe
+build/
+dist/
+*.spec
+
+# Ignora arquivos do sistema operacional
+.DS_Store
+Thumbs.db
