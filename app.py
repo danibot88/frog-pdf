@@ -84,7 +84,7 @@ with col_left:
     process_btn = st.button("🚀 Processar e Indexar", use_container_width=True)
 
 # ------------------------------------------
-# COLUNA CENTRAL: Área Principal (Chat e Resultados)
+# COLUNA CENTRAL: Área Principal (Chat, Resultados e Visualizador)
 # ------------------------------------------
 with col_center:
     st.title("🐸 FrogPDF")
@@ -128,9 +128,35 @@ with col_center:
                     ai_response = ai.generate_summary_and_tables(combined_text, analysis_choice)
                     if ai_response["status"] == "success":
                         st.session_state["analysis_result"] = ai_response["result"]
-                        st.success("✅ Documentos processados e analisados com sucesso!")
+                        st.success("✅ Documentos processados, indexados e analisados com sucesso!")
                     else:
                         st.error(ai_response["result"])
+
+    # Aba de Visualizador de Documentos Nativos do Projeto
+    st.markdown("---")
+    st.header("👁️ Visualizador de Documentos")
+    project_folder = os.path.join("data", "uploads", selected_project.replace(" ", "_"))
+    
+    if os.path.exists(project_folder):
+        project_files = [f for f in os.listdir(project_folder) if os.path.isfile(os.path.join(project_folder, f))]
+        if project_files:
+            selected_file_to_view = st.selectbox("Selecione o arquivo para visualizar:", project_files)
+            file_path_to_view = os.path.join(project_folder, selected_file_to_view)
+            
+            if selected_file_to_view.lower().endswith('.pdf'):
+                # Renderiza PDF de forma nativa na tela
+                with open(file_path_to_view, "rb") as pdf_file:
+                    PDFbyte = pdf_file.read()
+                st.pdf(PDFbyte, height=600)
+            elif selected_file_to_view.lower().endswith(('.docx', '.xlsx', '.csv', '.txt')):
+                # Mostra o texto extraído do documento para leitura rápida
+                with st.expander(f"Ver conteúdo extraído de: {selected_file_to_view}"):
+                    file_text_preview = loader.load_document(file_path_to_view)
+                    st.text_area("Conteúdo:", file_text_preview, height=300)
+        else:
+            st.info("Nenhum arquivo enviado para este projeto ainda.")
+    else:
+        st.info("Nenhuma pasta de projeto criada ainda.")
 
     # Exibir Relatórios e Central de Exportação
     if "analysis_result" in st.session_state and st.session_state["analysis_result"]:
@@ -173,7 +199,6 @@ with col_center:
     st.markdown("---")
     st.header("💬 Chat Inteligente & Comparativo")
     
-    # Seletor para escolher quais projetos comparar no chat
     comparison_targets = st.multiselect(
         "🔍 Selecione os projetos para incluir na busca do Chat (Cruzamento de Dados):",
         options=project_names,
@@ -197,7 +222,6 @@ with col_center:
                 db.save_message(current_project_id, "user", user_query)
             
             with st.spinner(f"Cruzando dados entre: {', '.join(comparison_targets)}..."):
-                # Busca semântica cruzada em múltiplos projetos
                 relevant_context = rag.query_multiple_projects(comparison_targets, user_query)
                 answer = ai.interactive_chat(relevant_context, user_query)
                 
