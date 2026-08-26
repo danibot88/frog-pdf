@@ -13,9 +13,16 @@ class DocumentLoader:
     """
     
     def __init__(self, tesseract_path: str = None):
-        # Permite configurar o caminho do Tesseract caso venha empacotado no .exe
+        # Caminho padrão do Tesseract no Windows para evitar erros de PATH
+        default_windows_path = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+        
         if tesseract_path and os.path.exists(tesseract_path):
             pytesseract.pytesseract.tesseract_cmd = tesseract_path
+        elif os.path.exists(default_windows_path):
+            pytesseract.pytesseract.tesseract_cmd = default_windows_path
+        else:
+            # Fallback caso esteja instalado em outro local ou configurado no PATH global
+            pass
 
     def extract_text_from_pdf(self, file_path: str) -> str:
         """
